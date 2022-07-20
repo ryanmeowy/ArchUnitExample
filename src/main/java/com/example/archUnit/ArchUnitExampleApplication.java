@@ -1,13 +1,13 @@
-package com.ryan.archunitdemo;
+package com.example.archUnit;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ArchUnitDemoApplication {
+public class ArchUnitExampleApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(ArchUnitDemoApplication.class, args);
+        SpringApplication.run(ArchUnitExampleApplication.class, args);
     }
 
 }

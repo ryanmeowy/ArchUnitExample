@@ -1,6 +1,6 @@
-package com.ryan.archunitdemo;
+package com.example.archUnit;
 
-import com.ryan.archunitdemo.config.config;
+import com.example.archUnit.config.DemoConfig;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -11,14 +11,12 @@ import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.stereotype.Service;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 
 
 @SpringBootTest
-class ArchUnitDemoApplicationTests {
+class ArchUnitExampleApplicationTests {
 
     JavaClasses classes = new ClassFileImporter().importPackages("com.ryan.archunitdemo");
 
@@ -39,12 +37,10 @@ class ArchUnitDemoApplicationTests {
                 // 不扫描jar包
                 .with(ImportOption.Predefined.DO_NOT_INCLUDE_JARS)
                 // 不扫描 测试包
-                .with(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                // 自定义排除的包
-                .with(new CustomImportOption("com.ryan.archunitdemo.dontImport","com.ryan.archunitdemo.config"));
+                .with(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS);
         ClassFileImporter classFileImporter = new ClassFileImporter(importOptions);
         JavaClasses javaClasses1 = classFileImporter.importPackages("com.ryan.archunitdemo");
-        JavaClass javaClass1 = javaClasses1.get(config.class);
+        JavaClass javaClass1 = javaClasses1.get(DemoConfig.class);
         // 排除了 com.ryan.archunitdemo.DontImport 包后, 无法扫描到指定类, 将会报错
         Assertions.assertEquals("config",javaClass1.getSimpleName());
     }
@@ -118,26 +114,26 @@ class ArchUnitDemoApplicationTests {
         archRule.check(classes);
     }
 
-    @Test
-    void ruleTest05() {
-        /*
-         * 继承关系检查
-         * 实现DemoInterface接口的类名必须以Impl结尾
-         */
-        ArchRule archRule = ArchRuleDefinition.classes()
-                .that().implement(DemoInterface.class)
-                .should().haveSimpleNameEndingWith("Impl");
-
-        /*
-         * 只有service包中的类可以访问DemoImpl
-         */
-        ArchRule archRule1 = ArchRuleDefinition.classes()
-                .that().areAssignableTo(DemoImpl.class)
-                .should().onlyBeAccessed().byAnyPackage("..service..");
-
-        archRule.check(classes);
-        archRule1.check(classes);
-    }
+//    @Test
+//    void ruleTest05() {
+//        /*
+//         * 继承关系检查
+//         * 实现DemoInterface接口的类名必须以Impl结尾
+//         */
+//        ArchRule archRule = ArchRuleDefinition.classes()
+//                .that().implement(DemoInterface.class)
+//                .should().haveSimpleNameEndingWith("Impl");
+//
+//        /*
+//         * 只有service包中的类可以访问DemoImpl
+//         */
+//        ArchRule archRule1 = ArchRuleDefinition.classes()
+//                .that().areAssignableTo(DemoImpl.class)
+//                .should().onlyBeAccessed().byAnyPackage("..service..");
+//
+//        archRule.check(classes);
+//        archRule1.check(classes);
+//    }
 
     @Test
     void ruleTest06() {
@@ -145,11 +141,21 @@ class ArchUnitDemoApplicationTests {
          * 注解检查
          * 只有标注了service注解的类可以访问DemoImpl
          */
-        ArchRule archRule = ArchRuleDefinition.classes()
-                .that().areAssignableTo(DemoImpl.class)
-                .should().onlyBeAccessed().byClassesThat().areAnnotatedWith(Service.class);
+//        ArchRule archRule = ArchRuleDefinition.classes()
+//                .that().areAssignableTo(DemoImpl.class)
+//                .should().onlyBeAccessed().byClassesThat().areAnnotatedWith(Service.class);
+        layeredArchitecture()
+                .layer("Controller").definedBy("..controller..")
+                .layer("Service").definedBy("..service..")
+                .layer("dao").definedBy("..dao..")
 
-        archRule.check(classes);
+                .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
+                .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller")
+                .whereLayer("dao").mayOnlyBeAccessedByLayers("Service");
+//        slices().matching("com.myapp.(*)..").should().beFreeOfCycles();
+
+
+//        archRule.check(classes);
     }
 
 }
