@@ -6,9 +6,7 @@
 
 ArchUnit is a free, simple and extensible library for checking the architecture of your Java code using any plain Java unit test framework.That is, ArchUnit can check dependencies between packages and classes, layers and slices, check for cyclic dependencies and more. It does so by analyzing given Java bytecode, importing all classes into a Java code structure. 
 
-ArchUnit是`一个`免费的、简单的、可扩展的类库，用于检查Java代码的体系结构。提供检查包和类的依赖关系、调用层次和切面的依赖关系、循环依赖检查等其他功能。它通过导入所有类的代码结构，基于Java字节码分析实现这一点。
-
-
+ArchUnit是一个免费的、简单的、可扩展的类库，用于检查Java代码的体系结构。提供检查包和类的依赖关系、调用层次和切面的依赖关系、循环依赖检查等其他功能。它通过导入所有类的代码结构，基于Java字节码分析实现这一点。
 
 **应用场景**
 
@@ -24,9 +22,11 @@ ArchUnit是`一个`免费的、简单的、可扩展的类库，用于检查Java
 
 这些问题可能需要在Review的时候才会被看到，并不是一种很及时的解决方法。
 
+本次demo只展示了ArchUnit一部分用法，想了解更多，可以参考：[官方文档](https://www.archunit.org/userguide/html/000_Index.html)和[官方example](https://github.com/TNG/ArchUnit-Examples)
+
 ---
 
->  环境：JDK1.8、ArchUnit0.22.0 、gradle6.7、SpringBoot 2.3.4.RELEASE、junit 5
+>  环境：JDK1.8、ArchUnit0.22.0 、gradle6.7、junit 5
 
 ## 快速开始
 
@@ -35,17 +35,14 @@ ArchUnit是`一个`免费的、简单的、可扩展的类库，用于检查Java
 ```gradle
 dependencies {
     testImplementation 'com.tngtech.ArchUnit:ArchUnit:0.22.0'
-    testImplementation 'com.tngtech.ArchUnit:ArchUnit-junit5:0.22.0'
 }
 ```
 
-从下面三个方面来介绍下ArchUnit的基本使用
+基本使用分三步 
 
-- 指定需要扫描的包 (注解和代码)
-- 内建规则定义 (代码)
-- 自定义规则（代码）
-
-本次demo只演示ArchUnit的一部分用法，想了解更多，可以参考：[官方文档](https://www.ArchUnit.org/userguide/html/000_Index.html#_introduction)和[官方example](https://github.com/TNG/ArchUnit-Examples)
+- 指定需要扫描的包
+- 指定规则
+- 执行测试
 
 **指定扫描包名/路径（代码）** 
 
