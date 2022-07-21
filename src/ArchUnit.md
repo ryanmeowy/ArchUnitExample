@@ -22,15 +22,15 @@ ArchUnit是一个免费的、简单的、可扩展的类库，用于检查Java�
 
 这些问题可能需要在Review的时候才会被看到，并不是一种很及时的解决方法。
 
-本次demo只展示了ArchUnit一部分用法，想了解更多，可以参考：[官方文档](https://www.archunit.org/userguide/html/000_Index.html)和[官方example](https://github.com/TNG/ArchUnit-Examples)
-
 ---
 
 >  环境：JDK1.8、ArchUnit0.22.0 、gradle6.7、junit 5
 
 ## 快速开始
 
-导入依赖
+archunit集成了junit4和junit5，分别在`archunit-junit4`和`archunit-junit5-api`两个模块中； 本次demo使用junit5框架， 功能与junit4一致, 使用方式上有细微差别。
+
+**导入依赖**
 
 ```gradle
 dependencies {
@@ -38,53 +38,76 @@ dependencies {
 }
 ```
 
-基本使用分三步 
+**基本使用分三步**
 
-- 指定需要扫描的包
-- 指定规则
+- 导入类
+- 断言约束
 - 执行测试
 
-**指定扫描包名/路径（代码）** 
+### 导入类
+
+archUnit 提供了一个类用于导入类 ， ``ClassFileImporter``，基本使用：
+
+```java
+JavaClasses classes = new ClassFileImporter().importPackages("com.example.archUnit");
+```
+
+或者：
+
+```java
+JavaClasses classes = new ClassFileImporter().importPath("/some/path");
+```
+
+JavaClasses是JavaClass的集合,可以简单理解为反射中的Class集合， 后面使用代码规则和规则判断都强依赖于JavaClasses或者JavaClass
+
+指定的package或是path中，可能存在一些需要排除的包或是类， 比如我们并不希望项目的config包也进行规则判断，archUnit提供了一个类用于排除指定包， ``ImportOptions``， archUnit提供了一些常用的排除规则， 比如排除测试包， 排除jar包， 也可以实现``ImportOption``接口，来实现自己的排除规则。
+
+基本使用： 
 
 ```java
     @Test
     void importerTest() {
-        /*
-           JavaClasses是JavaClass的集合,可以简单理解为反射中的Class集合
-           后面使用代码规则和规则判断都强依赖与JavaClasses或者JavaClass
-         */
-
-         // 排除jar包和测试包
+         // 排除jar包 测试包 自定义选择器中的包
         ImportOptions importOptions = new ImportOptions()
                     .with(ImportOption.Predefined.DO_NOT_INCLUDE_JARS)
                     .with(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                     .with(new CustomImportOption());
         // 导入所有class
-        JavaClasses classes = new ClassFileImporter(importOptions).importPackages("com.gongkongsaas.product");
+        JavaClasses classes = new ClassFileImporter(importOptions).importPackages("com.example.archUnit");
+        // customImportOption中排查了config包，所以无法获取AppConfig
         JavaClass javaClass = classes.get(AppConfig.class);
-        // 排除了 com.ryan.ArchUnitdemo.config 包后, 无法扫描到指定类, 将会报错
         Assertions.assertEquals("AppConfig",javaClass1.getSimpleName());
     }
 ```
 
-**自定义ImportOption**
+自定义ImpaortOption
 
 ```java
-/**
- * 自定义ImportOption
- *
- * @author ryan
- */
 public class CustomImportOption implements ImportOption {
 
-      private static final Pattern CONFING_PATTERN = Pattern.compile(".*/com/gongkongsaas/product/config/.*");
-    private static final Set<Pattern> EXCLUDED_PATTERN = ImmutableSet.of(CONFIG_PATTERN);
-    /**
-     * @param location Location中包含路径信息 是否jar文件等判断属性的元数据, 方便使用正则表达式或者直接的逻辑判断
-     * @return false:
-     */
+    private static final Set<Pattern> EXCLUDED_PATTERN = new HashSet<>(8);
+    //定义默认排除的包 ，也可在创建实例的时候传入需要排除的包
+    private static final String[] DEF_DONT_SCAN_PACKAGES = {"com/example/archUnit/config",
+                    "com/example/archUnit/converter", "com/example/archUnit/annotation"};
+
+    static {
+        for (String defDontScanPackage : DEF_DONT_SCAN_PACKAGES) {
+            EXCLUDED_PATTERN.add(Pattern.compile(String.format(".*/%s/.*", defDontScanPackage)));
+        }
+    }
+
+    public CustomImportOption() {
+    }
+
+    public CustomImportOption(String... packages) {
+        for (String eachPackage : packages) {
+            EXCLUDED_PATTERN.add(Pattern.compile(String.format(".*/%s/.*", eachPackage)));
+        }
+    }
+
     @Override
     public boolean includes(Location location) {
+        //遍历pattern依次与location中的uri进行匹配 
         for (Pattern pattern : EXCLUDED_PATTERN) {
             if (location.matches(pattern)) {
                 return false;
@@ -95,7 +118,7 @@ public class CustomImportOption implements ImportOption {
 }
 ```
 
-**指定扫描报名/路径 （注解）**
+使用注解导入类
 
 ```java
 @AnalyzeClasses(packages = "com.gongkongsaas.product",
@@ -109,17 +132,35 @@ public class CustomImportOption implements ImportOption {
      */
 ```
 
-**内建规则定义**
+### 断言约束
 
-- 类扫描完成后，接来下就是将定义的规则应用于所有类并进行断言
+ArchUnit提供了一些简单的规则供我们使用，位于GeneralCodingRules中
 
-- ArchUnit提供了一些简单的规则供我们使用，位于GeneralCodingRules中 
-  
-  - NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS：不能调用System.out、System.err或者(Exception.)printStackTrace。
-  - NO_CLASSES_SHOULD_THROW_GENERIC_EXCEPTIONS：类不能直接抛出通用异常Throwable、Exception或者RuntimeException。
-  - NO_CLASSES_SHOULD_USE_JAVA_UTIL_LOGGING：不能使用`java.util.logging`包路径下的日志组件。
+- NO_CLASSES_SHOULD_THROW_GENERIC_EXCEPTIONS：类不能直接抛出通用异常Throwable、Exception或者RuntimeException。
+
+- NO_CLASSES_SHOULD_USE_JAVA_UTIL_LOGGING：禁用 java.util.logging 包下的日志组件。
+
+- NO_CLASSES_SHOULD_USE_JODATIME： 禁用JodaTime （DateTime now = DateTime.now()；） 
+
+- NO_CLASSES_SHOULD_USE_FIELD_INJECTION ： 禁用字段注入 （@Autowird  @Resource  @Inject ）
+
+- NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS: 禁用系统标准流             System.out     System.err    e.printStackTrace()
 
 ```java
+/**
+     * 禁止使用字段注入 (Autowired; Resource; Inject)
+     */
+    @ArchTest
+    private final ArchRule no_field_injection = NO_CLASSES_SHOULD_USE_FIELD_INJECTION;
+
+    /**
+     * 禁止使用系统标准流   System.out   System.err.    e.printStackTrace()
+     * ArchIgnore 以这种方式标记的规则将在评估期间跳过
+     */
+    @ArchIgnore
+    @ArchTest
+    private final ArchRule NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS = GeneralCodingRules.NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS;
+
     /**
      * 禁止抛出通用异常 Throwable, Exception, RuntimeException
      */
@@ -132,9 +173,142 @@ public class CustomImportOption implements ImportOption {
     @ArchTest
     private final ArchRule no_java_util_logging = NO_CLASSES_SHOULD_USE_JAVA_UTIL_LOGGING;
 
-     /**
-     * 禁止依赖上层
-     */
     @ArchTest
-    static final ArchRule no_accesses_to_upper_package = NO_CLASSES_SHOULD_DEPEND_UPPER_PACKAGES;
+    private final ArchRule no_class_use_jodaTime = NO_CLASSES_SHOULD_USE_JODATIME;
 ```
+
+除了内建的规则，archUnit还提供了一个抽象的  “DSL_Like“ fluent API ， 比如想要表达 Services 只被 Controller 和 Service 访问 ，可以这么写
+
+```java
+ArchRule myRule = classes()
+    .that().resideInAPackage("..service..")
+    .should().onlyBeAccessed().byAnyPackage("..controller..", "..service..");
+```
+
+..xx.. 代表任意数量的包  （类似 AspectJ Pointcuts 的写法 ）
+
+完整例子： 
+
+```java
+JavaClasses importedClasses = new ClassFileImporter().importPackages("xxx.xxx");
+
+ArchRule myRule = classes()
+        .that().resideInAPackage("..service..")
+        .should().onlyBeAccessed().byAnyPackage("..controller..", "..service..");
+
+myRule.check(importedClasses);
+```
+
+使用junit
+
+```java
+@RunWith(ArchUnitRunner.class) // Remove this line for JUnit 5!!
+@AnalyzeClasses(packages = "xxx.xxx")
+public class MyArchitectureTest {
+
+    @ArchTest
+    public static final ArchRule myRule = classes()
+        .that().resideInAPackage("..service..")
+        .should().onlyBeAccessed().byAnyPackage("..controller..", "..service..");
+
+}
+```
+
+## 检查了什么
+
+### 包依赖检查
+
+![软件包部门无法访问](https://www.archunit.org/userguide/html/package-deps-no-access.png)
+
+```java
+noClasses().that().resideInAPackage("..source..")
+    .should().dependOnClassesThat().resideInAPackage("..foo..")
+```
+
+ source包中类不可以依赖foo包下的类 
+
+
+
+![包 deps 只能访问](https://www.archunit.org/userguide/html/package-deps-only-access.png)
+
+```java
+classes().that().resideInAPackage("..foo..")
+    .should().onlyHaveDependentClassesThat().resideInAnyPackage("..source.one..", "..foo..")
+```
+
+foo包下的类只能被source包下和foo包下的类依赖 
+
+### 类依赖检查
+
+![类命名部门](https://www.archunit.org/userguide/html/class-naming-deps.png)
+
+```java
+classes().that().haveNameMatching(".*Bar")
+    .should().onlyHaveDependentClassesThat().haveSimpleName("Bar")
+```
+
+类名以Bar结尾的类， 只能被Bar这个类依赖 
+
+### 包含检查
+
+![类包包含](https://www.archunit.org/userguide/html/class-package-contain.png)
+
+```java
+classes().that().haveSimpleNameStartingWith("Foo")
+    .should().resideInAPackage("com.foo")
+```
+
+类名以Foo开头的类，需要放在com.foo包下
+
+### 继承检查
+
+![继承命名检查](https://www.archunit.org/userguide/html/inheritance-naming-check.png)
+
+```java
+classes().that().implement(Connection.class)
+    .should().haveSimpleNameEndingWith("Connection")
+```
+
+实现Connection接口的类， 类名应该以Connection结尾
+
+![继承访问检查](https://www.archunit.org/userguide/html/inheritance-access-check.png)
+
+```java
+classes().that().areAssignableTo(EntityManager.class)
+    .should().onlyHaveDependentClassesThat().resideInAnyPackage("..persistence..")
+```
+
+继承EntityManager的类， 应该只被persistence包下的类依赖 
+
+### 层检查
+
+![层检查](https://www.archunit.org/userguide/html/layer-check.png)
+
+```java
+layeredArchitecture()
+    .layer("Controller").definedBy("..controller..")
+    .layer("Service").definedBy("..service..")
+    .layer("Persistence").definedBy("..persistence..")
+
+    .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
+    .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller")
+    .whereLayer("Persistence").mayOnlyBeAccessedByLayers("Service")
+```
+
+首先定义了三层架构 
+
+controller包下的 为Controller层 
+
+service包下的为Service层
+
+persistence包下的为Persistence层 
+
+然后指定访问规则 
+
+Controller层不该被其他层访问
+
+Service层只能被Controller层访问
+
+Persistence层只能被Service层访问
+
+## 自定义规则

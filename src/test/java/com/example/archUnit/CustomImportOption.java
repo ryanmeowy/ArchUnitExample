@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 public class CustomImportOption implements ImportOption {
 
 	private static final Set<Pattern> EXCLUDED_PATTERN = new HashSet<>(8);
+	//定义默认排除的包 ，也可在创建实例的时候传入需要排除的包
 	private static final String[] DEF_DONT_SCAN_PACKAGES = {"com/example/archUnit/config",
 					"com/example/archUnit/converter", "com/example/archUnit/annotation"};
 
@@ -35,6 +36,7 @@ public class CustomImportOption implements ImportOption {
 
 	@Override
 	public boolean includes(Location location) {
+		//遍历pattern依次与location中的uri进行匹配
 		for (Pattern pattern : EXCLUDED_PATTERN) {
 			if (location.matches(pattern)) {
 				return false;
@@ -42,6 +44,5 @@ public class CustomImportOption implements ImportOption {
 		}
 		return true;
 	}
-
 }
 

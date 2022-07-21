@@ -122,7 +122,6 @@ public class ControllerRulesTest {
 					for (Parameter parameter : parameters) {
 						parameter.isAnnotationPresent(RequestBody.class);
 					}
-
 				}
 			}
 		};

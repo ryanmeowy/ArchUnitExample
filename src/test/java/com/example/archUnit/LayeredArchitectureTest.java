@@ -11,7 +11,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import static com.tngtech.archunit.core.domain.JavaClass.Functions.GET_PACKAGE_NAME;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 
-@AnalyzeClasses(packages = "com.gongkongsaas.product",
+@AnalyzeClasses(packages = "com.example.archUnit",
         importOptions = {CustomImportOption.class,
                 ImportOption.DoNotIncludeTests.class,
                 ImportOption.DoNotIncludeJars.class})
@@ -20,17 +20,15 @@ public class LayeredArchitectureTest {
     @ArchTest
     static final ArchRule layer_dependencies_are_respected = layeredArchitecture()
 
-            .layer("Controllers").definedBy("com.gongkongsaas.product.controller..")
-            .layer("Services").definedBy("com.gongkongsaas.product.service..")
-            .layer("Persistence").definedBy("com.gongkongsaas.product.dao..")
+            .layer("Controllers").definedBy("..controller..")
+            .layer("Services").definedBy("..service..")
+            .layer("Persistence").definedBy("..dao..")
 
             .whereLayer("Controllers").mayNotBeAccessedByAnyLayer()
             .whereLayer("Services").mayOnlyBeAccessedByLayers("Controllers")
-            .whereLayer("Persistence").mayOnlyBeAccessedByLayers("Services")
+            .whereLayer("Persistence").mayOnlyBeAccessedByLayers("Services");
 
-            // 指定忽略的包, 参数1: 忽略的包; 参数2: 被忽略的包
-            .ignoreDependency(areDeclaredInManagerAndMq(), areDeclaredInDao())
-            .ignoreDependency(areDeclaredInMq(), areDeclaredInService());
+
 
 
     private static DescribedPredicate<JavaClass> areDeclaredInManagerAndMq() {
