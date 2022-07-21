@@ -227,8 +227,6 @@ noClasses().that().resideInAPackage("..source..")
 
  source包中类不可以依赖foo包下的类 
 
-
-
 ![包 deps 只能访问](https://www.archunit.org/userguide/html/package-deps-only-access.png)
 
 ```java
@@ -312,3 +310,60 @@ Service层只能被Controller层访问
 Persistence层只能被Service层访问
 
 ## 自定义规则
+
+archUnit也支持更灵活的自定义， 举个例子， 编码规范要求， 所有查询接口@RequestBody入参需要以Query结尾， 演示代码：
+
+```java
+@Test
+	public void controllerRule() {
+		// 选择器 ， 用于构建 importer
+		ImportOptions importOptions = new ImportOptions()
+						.with(ImportOption.Predefined.DO_NOT_INCLUDE_JARS)
+						.with(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+						.with(new CustomImportOption());
+
+		// 指定扫描的包
+		JavaClasses classes = new ClassFileImporter(importOptions).importPackages("com.example.archUnit");
+
+		/*
+		 * 指定规则生效的包
+		 * 这一步可以合并到上一步的指定扫描包中， 这里为了演示功能
+		 */
+		DescribedPredicate<JavaClass> predicate = new DescribedPredicate<JavaClass>("定义在controller包下的所有类") {
+			@Override
+			public boolean apply(JavaClass input) {
+				return null != input.getPackageName() && input.getPackageName().contains("com.example.archUnit.controller");
+			}
+		};
+
+		// 指定规则
+		ArchCondition<JavaClass> condition = new ArchCondition<JavaClass>("查询方法的形参需要以Query结尾") {
+			@Override
+			public void check(JavaClass javaClass, ConditionEvents conditionEvents) {
+				List<Method> methods = javaClass.getMethods().stream()
+								.filter(x -> x.getName().startsWith("list") || x.getName().startsWith("get"))
+								.map(JavaMethod::reflect)
+								.collect(Collectors.toList());
+				for (Method method : methods) {
+					Class<?>[] parameterTypes = method.getParameterTypes();
+					Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+					for (int i = 0; i < parameterAnnotations.length; i++) {
+						for (Annotation annotation : parameterAnnotations[i]) {
+							if (annotation.annotationType() == RequestBody.class) {
+								Class<?> parameterType = parameterTypes[i];
+								if (parameterType != List.class && !parameterType.getName().endsWith("Query")) {
+									conditionEvents.add(SimpleConditionEvent.violated(method,
+													String.format("当前控制器类[%s]的[%s]查询方法形参不以\"Query\"结尾", javaClass.getName(), method.getName())));
+								}
+							}
+						}
+					}
+				}
+			}
+		};
+		ArchRuleDefinition.classes()
+						.that(predicate)
+						.should(condition)
+						.check(classes);
+	}
+```

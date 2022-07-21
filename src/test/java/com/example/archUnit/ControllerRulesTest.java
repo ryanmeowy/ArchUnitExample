@@ -118,9 +118,18 @@ public class ControllerRulesTest {
 								.map(JavaMethod::reflect)
 								.collect(Collectors.toList());
 				for (Method method : methods) {
-					Parameter[] parameters = method.getParameters();
-					for (Parameter parameter : parameters) {
-						parameter.isAnnotationPresent(RequestBody.class);
+					Class<?>[] parameterTypes = method.getParameterTypes();
+					Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+					for (int i = 0; i < parameterAnnotations.length; i++) {
+						for (Annotation annotation : parameterAnnotations[i]) {
+							if (annotation.annotationType() == RequestBody.class) {
+								Class<?> parameterType = parameterTypes[i];
+								if (parameterType != List.class && !parameterType.getName().endsWith("Query")) {
+									conditionEvents.add(SimpleConditionEvent.violated(method,
+													String.format("当前控制器类[%s]的[%s]查询方法形参不以\"Query\"结尾", javaClass.getName(), method.getName())));
+								}
+							}
+						}
 					}
 				}
 			}
