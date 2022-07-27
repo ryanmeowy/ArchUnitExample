@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 
-@AnalyzeClasses(packages = "com.gongkongsaas.product",
+@AnalyzeClasses(packages = "com.example.archUnit",
         importOptions = {CustomImportOption.class,
                 ImportOption.DoNotIncludeTests.class,
                 ImportOption.DoNotIncludeJars.class})

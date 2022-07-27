@@ -7,7 +7,7 @@ import com.tngtech.archunit.lang.ArchRule;
 
 import static com.tngtech.archunit.library.DependencyRules.NO_CLASSES_SHOULD_DEPEND_UPPER_PACKAGES;
 
-@AnalyzeClasses(packages = "com.gongkongsaas.product",
+@AnalyzeClasses(packages = "com.example.archUnit",
         importOptions = {CustomImportOption.class,
                 ImportOption.DoNotIncludeTests.class,
                 ImportOption.DoNotIncludeJars.class})
